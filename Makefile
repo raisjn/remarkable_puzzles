@@ -33,12 +33,16 @@ RMKIT_FLAGS = -D"RMKIT_IMPLEMENTATION" -D'FONT_EMBED_H="${BUILD_DIR}/font_embed.
 	-pthread -lpthread
 
 ifeq ($(ARCH),kobo)
-	RMKIT_FLAGS+= -D"KOBO=1"
+	RMKIT_FLAGS+= -D"KOBO=1" -D"RMKIT_FBINK=1"
 endif
 
 $(BUILD_DIR)/rmkit.h:
-	cd vendor/rmkit && $(MAKE) rmkit.h
 	mkdir -p $(dir $@)
+	cd vendor/rmkit && CXX_BIN=$(CXX) $(MAKE) rmkit.h
+ifeq ($(ARCH),kobo)
+	cd vendor/rmkit && CXX_BIN=$(CXX) FBINK=1 make libfbink
+	cp vendor/rmkit/src/vendor/FBInk/Release/libfbink.a $(BUILD_DIR)
+endif
 	mv vendor/rmkit/src/build/rmkit.h $(BUILD_DIR)
 	cp vendor/rmkit/src/rmkit/font_embed.h $(BUILD_DIR)
 	cp vendor/rmkit/src/build/$(STB) $(BUILD_DIR)
@@ -61,7 +65,7 @@ INCLUDES += -isystem $(BUILD_DIR)/
 
 CXXFLAGS  = -Wall $(INCLUDES) $(RMKIT_FLAGS) $(BUILD_FLAGS)
 ifeq ($(ARCH), kobo)
-CXXFLAGS += -static -static-libstdc++ -static-libgcc -D"KOBO=1"
+CXXFLAGS += -static -static-libstdc++ -static-libgcc
 endif
 ifeq ($(ARCH), rm)
 CXXFLAGS += -D"REMARKABLE=1"
@@ -79,6 +83,11 @@ endif
 MAIN_OBJ = $(BUILD_DIR)/main.o
 MAIN_SRC = $(MAIN_OBJ:.o=.cpp)
 OBJS = $(MAIN_OBJ)
+FBINK_OBJ =
+
+ifeq ($(ARCH),kobo)
+	FBINK_OBJ = $(BUILD_DIR)/libfbink.a
+endif
 
 $(MAIN_SRC): $(SRCS)
 	echo -n "" > $(MAIN_SRC)
@@ -88,7 +97,7 @@ $(MAIN_OBJ): $(BUILD_DIR)/rmkit.h $(MAIN_SRC)
 	$(CXX) $(CXXFLAGS) -c -o $@ $(MAIN_SRC)
 
 $(BUILD_DIR)/$(TARGET): $(GAME_OBJS) $(OBJS)
-	$(CXX) $(CXXFLAGS) -o $@ $(GAME_OBJS) $(OBJS) $(BUILD_DIR)/$(STB)
+	$(CXX) $(CXXFLAGS) -o $@ $(GAME_OBJS) $(OBJS) $(BUILD_DIR)/$(STB) $(FBINK_OBJ)
 
 .PHONY: $(TARGET)
 $(TARGET): $(BUILD_DIR)/$(TARGET)
@@ -116,9 +125,7 @@ docker:
 
 .PHONY: docker_build
 docker_build:
-	docker build -t $(DOCKER_TAG) .
-
-
+	docker build -t $(DOCKER_TAG) . -f Dockerfile
 
 #### Clean
 .PHONY: clean

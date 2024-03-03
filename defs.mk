@@ -24,8 +24,8 @@ ifeq ($(ARCH),rm)
 	CC  = arm-linux-gnueabihf-gcc
 	STB = stb.arm.o
 else ifeq ($(ARCH),kobo)
-	CXX = arm-linux-gnueabihf-g++
-	CC  = arm-linux-gnueabihf-gcc
+	CXX = arm-kobo-linux-gnueabihf-g++
+	CC  = arm-kobo-linux-gnueabihf-gcc
 	STB = stb.arm.o
 else
 	CXX = g++
